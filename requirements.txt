@@ -1,0 +1,5 @@
+torch >= 2.0.0
+transformers >= 4.37.2
+webdataset >= 0.2.80 
+numpy >= 1.26.4
+pillow >= 10.0.0
