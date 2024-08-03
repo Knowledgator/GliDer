@@ -170,7 +170,7 @@ def main(args):
     criterion = DistilationCriterion(temperature=args.temperature, 
                                         weight_dict=weight_dict)
 
-    model = DistillationModelWrapper(teacher_model, model, criterion)
+    model = DistillationModelWrapper(model, teacher_model, criterion)
 
     training_args = TrainingArguments(
         output_dir=args.save_path,

@@ -22,11 +22,11 @@ class DistilationCriterion(nn.Module):
 
     def loss_boxes(self, teacher_boxes, student_boxes):
         losses = {}
-        loss_giou = 1 - torch.diag(generalized_box_iou(
-            box_cxcywh_to_xyxy(teacher_boxes),
-            box_cxcywh_to_xyxy(student_boxes)))
-        losses['giou'] = loss_giou.sum() / teacher_boxes.shape[1]
         losses['boxes'] = F.l1_loss(student_boxes, teacher_boxes)
+        loss_giou = 1 - torch.diag(generalized_box_iou(
+            box_cxcywh_to_xyxy(teacher_boxes.reshape(-1, 4)),
+            box_cxcywh_to_xyxy(student_boxes.reshape(-1, 4))))
+        losses['giou'] = loss_giou.sum() / teacher_boxes.shape[1]
         return losses
 
     def get_loss_map(self):
@@ -40,6 +40,22 @@ class DistilationCriterion(nn.Module):
     def forward(self, teacher_output, student_output):
         teacher_logits, teacher_boxes, teacher_objectness = teacher_output.logits, teacher_output.pred_boxes, teacher_output.objectness_logits
         student_logits, student_boxes, student_objectness = student_output.logits, student_output.pred_boxes, student_output.objectness_logits
+
+        n_queries = student_logits.shape[1]
+
+        # Sort x and get indices
+        sorted_, indices = torch.sort(teacher_objectness, dim=1, descending=True)
+        
+        # Create a range tensor for batch dimension
+        batch_size = teacher_objectness.shape[0]
+        batch_indices = torch.arange(batch_size).unsqueeze(1).expand(-1, n_queries)
+        
+        # Select top N indices
+        top_n_indices = indices[:, :n_queries].squeeze(-1)
+        
+        teacher_logits = teacher_logits[batch_indices, top_n_indices]
+        teacher_boxes = teacher_boxes[batch_indices, top_n_indices]
+        teacher_objectness = teacher_objectness[batch_indices, top_n_indices]
 
         loss_map = self.get_loss_map()
         losses = {}
