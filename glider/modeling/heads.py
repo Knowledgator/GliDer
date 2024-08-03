@@ -3,10 +3,10 @@ from typing import Optional, Union, Tuple
 import torch
 from torch import nn
 
-from ..config import GliDerConfig
+# from ..config import GliDerConfig
 
 class ClassPredictionHead(nn.Module):
-    def __init__(self, config: GliDerConfig):
+    def __init__(self, config):
         super().__init__()
 
         self.config = config
@@ -64,7 +64,7 @@ class ClassPredictionHead(nn.Module):
         return (pred_logits, image_class_embeds)
 
 class BoxPredictionHead(nn.Module):
-    def __init__(self, config: GliDerConfig, out_dim: int = 4):
+    def __init__(self, config, out_dim: int = 4):
         super().__init__()
 
         width = config.vision_hidden_size

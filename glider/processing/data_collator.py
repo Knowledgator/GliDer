@@ -96,3 +96,90 @@ class DataCollator:
         targets*=self.num_query_groups
         batch['targets'] = targets
         return batch
+
+class DistilationDataCollator:
+    def __init__(self, teacher_tokenizer, teacher_feature_extractor, 
+                            tokenizer, feature_extractor, max_objects=10, 
+                                    neg_rate=1, max_length = 16, resize_image=False,
+                                                    num_query_groups=1, add_no_object=False):
+        self.teacher_tokenizer=teacher_tokenizer
+        self.teacher_feature_extractor=teacher_feature_extractor
+        self.tokenizer=tokenizer
+        self.feature_extractor=feature_extractor
+        self.max_objects=max_objects
+        self.neg_rate = neg_rate
+        self.max_length = max_length
+        self.resize_image = resize_image
+        self.num_query_groups = num_query_groups
+        self.add_no_object=add_no_object
+
+    def get_all_nouns(self, batch):
+        all_nouns = set()
+        for item in batch:
+            id2chunk = item['id2chunk']
+            nouns = set(id2chunk.values())
+            all_nouns.update(nouns)
+        all_nouns = list(all_nouns)
+        if self.add_no_object:
+            all_nouns.append('no object')
+        return all_nouns
+    
+    def tokenize(self, texts, image, is_teacher=False):
+        tokenizer = self.teacher_tokenizer if is_teacher else self.tokenizer
+        feature_extractor = self.teacher_feature_extractor if is_teacher else self.feature_extractor
+
+        model_inputs = tokenizer(texts, padding='max_length', max_length=self.max_length,
+                                 truncation=True, return_tensors='pt')
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        if self.resize_image:
+            image = image.resize((256, 256), Image.BILINEAR)
+        try:
+            image_features = feature_extractor(images=image, return_tensors="pt")
+        except:
+            return None
+        pixel_values = image_features['pixel_values'][0]
+        image_features['pixel_values'] = pixel_values
+        model_inputs.update(image_features)
+        return model_inputs
+    
+    def process_item(self, item, all_chunks):
+        student_inputs = self.tokenize(all_chunks, item['image'], is_teacher=False)
+        teacher_inputs = self.tokenize(all_chunks, item['image'], is_teacher=True)
+        if student_inputs is None and teacher_inputs is None:
+            return None
+        return  {'student': student_inputs, 'teacher': teacher_inputs}
+
+    def porcess_batch(self, batch):
+        batch = [item for item in batch if item is not None]
+        all_chunks = self.get_all_nouns(batch)
+        features = []
+        for item in batch:
+            try:
+                model_inputs = self.process_item(item, all_chunks)
+            except:
+                continue
+            if model_inputs:
+                features.append(model_inputs)
+        return features
+    
+    def __call__(self, batch: List[Dict[str, Any]]):
+        features = self.porcess_batch(batch)
+        if len(features)==0:
+            return None
+        first = features[0]
+        batch = {}
+
+        for model_type in ['student', 'teacher']:
+            for k in first[model_type]:
+                if k in {'labels', 'boxes', 'pixel_mask'}:
+                    continue
+                x = torch.stack([f[model_type][k] for f in features])
+                if k in {'input_ids', 'attention_mask'}:
+                    x = x.view(-1, x.shape[-1])
+                elif k == 'pixel_values':
+                    x = x.squeeze(1)
+                k = f"{model_type}_{k}"
+                batch[k] = x
+
+        return batch

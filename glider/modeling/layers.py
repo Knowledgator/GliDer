@@ -5,7 +5,7 @@ from torch import nn
 import torch.nn.functional as F
 from transformers.activations import ACT2FN
 
-from ..config import GliDerConfig
+# from ..config import GliDerConfig
 
 class MultiheadAttention(nn.Module):
     def __init__(self, hidden_size, num_heads, dropout) -> None:
@@ -53,7 +53,7 @@ class MultiheadAttention(nn.Module):
         return context_layer, None
     
 class Vision2TextProjector(nn.Module):
-    def __init__(self, config: GliDerConfig):
+    def __init__(self, config):
         super().__init__()
 
         self.linear_1 = nn.Linear(config.vision_hidden_size, config.text_hidden_size, bias=True)
@@ -68,7 +68,7 @@ class Vision2TextProjector(nn.Module):
 
 
 class Text2VisionProjector(nn.Module):
-    def __init__(self, config: GliDerConfig):
+    def __init__(self, config):
         super().__init__()
 
         self.linear_1 = nn.Linear(config.text_hidden_size, config.vision_hidden_size, bias=True)
@@ -128,7 +128,7 @@ class CrossAttentionBlock(nn.Module):
         return self.norm(query + self.dropout(attn_output))
 
 class DecoderLayer(nn.Module):
-    def __init__(self, config: GliDerConfig):
+    def __init__(self, config):
         super().__init__()
         self.embed_dim = config.vision_config.hidden_size
 
@@ -182,7 +182,7 @@ class DecoderLayer(nn.Module):
         return hidden_states
 
 class Decoder(nn.Module):
-    def __init__(self, config: GliDerConfig):
+    def __init__(self, config):
         super().__init__()
         self.config = config
         self.layers = nn.ModuleList([DecoderLayer(config) for _ in range(config.decoder_layers)])

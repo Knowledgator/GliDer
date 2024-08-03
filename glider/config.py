@@ -1,7 +1,7 @@
 from transformers.configuration_utils import PretrainedConfig
 from transformers.models.auto import CONFIG_MAPPING
 from transformers.models.clip.configuration_clip import CLIPTextConfig
-from owl.config import Owlv2VisionConfig, Owlv2TextConfig
+from .owl.config import Owlv2VisionConfig, Owlv2TextConfig
 
 class GliDerConfig(PretrainedConfig):
     model_type = "glider"

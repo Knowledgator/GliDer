@@ -92,7 +92,7 @@ def box_cxcywh_to_xyxy(x):
 
 def post_process_object_detection(
     outputs, threshold: float = 0.1, target_sizes: Union[torch.TensorType, List[Tuple]] = None, 
-                                            use_nms = True, iou_threshold = 0.3, multi_label=False
+                                            use_nms = True, iou_threshold = 0.3, multi_label=True
 ):
     """
     Converts the raw output of [`OwlViTForObjectDetection`] into final bounding boxes in (top_left_x, top_left_y,
